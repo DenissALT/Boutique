@@ -54,7 +54,7 @@ class _MainLayoutState extends State<MainLayout> {
       PosView(sheetsService: widget.sheetsService),
       InventoryView(sheetsService: widget.sheetsService),
       CustomersView(sheetsService: widget.sheetsService),
-      LossesView(sheetsService: widget.sheetsService),
+      //LossesView(sheetsService: widget.sheetsService),
       SalesHistoryView(sheetsService: widget.sheetsService),
     ];
 
@@ -62,8 +62,10 @@ class _MainLayoutState extends State<MainLayout> {
       body: Row(
         children: [
           NavigationRail(
-            backgroundColor: const Color(0xFF0F172A),
-            extended: MediaQuery.of(context).size.width > 800,
+            backgroundColor: const Color.fromRGBO(15, 23, 42, 1),
+            // Se contrae obligatoriamente en Punto de Venta (_selectedIndex == 1)
+            extended:
+                MediaQuery.of(context).size.width > 800 && _selectedIndex != 1,
             selectedIndex: _selectedIndex,
             unselectedIconTheme: const IconThemeData(color: Colors.grey),
             unselectedLabelTextStyle: const TextStyle(color: Colors.grey),
@@ -76,28 +78,79 @@ class _MainLayoutState extends State<MainLayout> {
                 setState(() => _selectedIndex = index),
             destinations: const [
               NavigationRailDestination(
-                icon: Icon(Icons.pie_chart_outline),
-                label: Text('Dashboard'),
+                icon: Icon(
+                  Icons.pie_chart_outline,
+                  color: Color(0xFF38BDF8),
+                ), // Azul Cyan
+                selectedIcon: Icon(Icons.pie_chart, color: Color(0xFF38BDF8)),
+                label: Text(
+                  'Dashboard',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.point_of_sale_outlined),
-                label: Text('Punto de Venta'),
+                icon: Icon(
+                  Icons.point_of_sale_outlined,
+                  color: Color(0xFFE879F9),
+                ), // Magenta / Rosa
+                selectedIcon: Icon(
+                  Icons.point_of_sale,
+                  color: Color(0xFFE879F9),
+                ),
+                label: Text(
+                  'Punto de Venta',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.inventory_2_outlined),
-                label: Text('Inventario'),
+                icon: Icon(
+                  Icons.inventory_2_outlined,
+                  color: Color(0xFFFACC15),
+                ), // Amarillo Gold
+                selectedIcon: Icon(Icons.inventory_2, color: Color(0xFFFACC15)),
+                label: Text(
+                  'Inventario',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.people_outline),
-                label: Text('Clientes'),
+                icon: Icon(
+                  Icons.people_outline,
+                  color: Color(0xFF4ADE80),
+                ), // Verde Esmeralda
+                selectedIcon: Icon(Icons.people, color: Color(0xFF4ADE80)),
+                label: Text(
+                  'Clientes',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
+              /*NavigationRailDestination(
+                icon: Icon(
+                  Icons.warning_amber_outlined,
+                  color: Color(0xFFFB923C),
+                ), // Naranja Alerta
+                selectedIcon: Icon(
+                  Icons.warning_amber,
+                  color: Color(0xFFFB923C),
+                ),
+                label: Text(
+                  'Mermas',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),*/
               NavigationRailDestination(
-                icon: Icon(Icons.warning_amber_outlined),
-                label: Text('Mermas'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                label: Text('Historial'),
+                icon: Icon(
+                  Icons.receipt_long_outlined,
+                  color: Color(0xFFA78BFA),
+                ), // Violeta / Púrpura
+                selectedIcon: Icon(
+                  Icons.receipt_long,
+                  color: Color(0xFFA78BFA),
+                ),
+                label: Text(
+                  'Historial',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),

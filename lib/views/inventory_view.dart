@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/sheets_service.dart';
+import '../models/size.dart';
+import '../models/category.dart';
 
 class InventoryView extends StatefulWidget {
   final SheetsService sheetsService;
@@ -15,6 +17,9 @@ class InventoryView extends StatefulWidget {
 class _InventoryViewState extends State<InventoryView> {
   List<Product> _products = [];
   bool _isLoading = true;
+  List<CategoryModel> _categories = [];
+  // Talles traídos exclusivamente de Sheets
+  List<SizeModel> _sizes = [];
 
   // Filtros
   String _searchQuery = '';
@@ -25,6 +30,21 @@ class _InventoryViewState extends State<InventoryView> {
   void initState() {
     super.initState();
     _loadInventory();
+    _loadSizes();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final result = await widget.sheetsService.fetchCategories();
+      if (mounted && result.isNotEmpty) {
+        setState(() {
+          _categories = result;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando categorías: $e');
+    }
   }
 
   Future<void> _loadInventory() async {
@@ -42,7 +62,19 @@ class _InventoryViewState extends State<InventoryView> {
     }
   }
 
-  // Helper para renderizar imágenes tanto desde URL como desde Base64 local
+  Future<void> _loadSizes() async {
+    try {
+      final result = await widget.sheetsService.fetchSizes();
+      if (mounted) {
+        setState(() {
+          _sizes = result;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando talles: $e');
+    }
+  }
+
   Widget _buildProductImage(String imageStr, {double size = 40}) {
     if (imageStr.isEmpty) {
       return Icon(
@@ -102,21 +134,17 @@ class _InventoryViewState extends State<InventoryView> {
       text: isEditing ? productToEdit.image : '',
     );
 
-    String categoryVal = isEditing ? productToEdit.category : 'Vestidos';
-    String sizeVal = isEditing ? productToEdit.size : 'M';
+    final List<String> availableCategories = _categories
+        .map((c) => c.categoria)
+        .toList();
+    final List<String> availableSizes = _sizes.map((s) => s.name).toList();
 
-    final categoriesList = [
-      'Vestidos',
-      'Blusas y Tops',
-      'Pantalones y Jeans',
-      'Chaquetas y Sacos',
-      'Faldas',
-      'Calzados',
-      'Accesorios',
-      'Otros',
-    ];
-
-    final sizesList = ['XS', 'S', 'M', 'L', 'XL', '36', '38', '40', 'Única'];
+    String sizeVal = isEditing
+        ? productToEdit.size
+        : (availableSizes.isNotEmpty ? availableSizes.first : '');
+    String categoryVal = isEditing
+        ? productToEdit.category
+        : (availableCategories.isNotEmpty ? availableCategories.first : '');
 
     showDialog(
       context: context,
@@ -134,9 +162,7 @@ class _InventoryViewState extends State<InventoryView> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isEditing
-                        ? 'Editar Prenda / Producto'
-                        : 'Nueva Prenda / Producto',
+                    isEditing ? 'Editar Prenda' : 'Nueva Prenda',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -155,7 +181,6 @@ class _InventoryViewState extends State<InventoryView> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nombre de la Prenda
                       TextField(
                         controller: nameCtrl,
                         decoration: const InputDecoration(
@@ -166,57 +191,65 @@ class _InventoryViewState extends State<InventoryView> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Categoría y Talla
                       Row(
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: categoriesList.contains(categoryVal)
+                              value: availableCategories.contains(categoryVal)
                                   ? categoryVal
-                                  : categoriesList.first,
+                                  : (availableCategories.isNotEmpty
+                                        ? availableCategories.first
+                                        : null),
                               decoration: const InputDecoration(
                                 labelText: 'Categoría *',
                                 border: OutlineInputBorder(),
                               ),
-                              items: categoriesList
+                              items: availableCategories
                                   .map(
-                                    (c) => DropdownMenuItem(
+                                    (c) => DropdownMenuItem<String>(
                                       value: c,
                                       child: Text(c),
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (val) =>
-                                  setModalState(() => categoryVal = val!),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => categoryVal = val);
+                                }
+                              },
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: sizesList.contains(sizeVal)
+                              value: availableSizes.contains(sizeVal)
                                   ? sizeVal
-                                  : sizesList[2],
+                                  : (availableSizes.isNotEmpty
+                                        ? availableSizes.first
+                                        : null),
                               decoration: const InputDecoration(
                                 labelText: 'Talla *',
                                 border: OutlineInputBorder(),
                               ),
-                              items: sizesList
+                              items: availableSizes
                                   .map(
-                                    (s) => DropdownMenuItem(
+                                    (s) => DropdownMenuItem<String>(
                                       value: s,
                                       child: Text(s),
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (val) =>
-                                  setModalState(() => sizeVal = val!),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => sizeVal = val);
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
 
-                      // Color / Tono
                       TextField(
                         controller: colorCtrl,
                         decoration: const InputDecoration(
@@ -227,7 +260,6 @@ class _InventoryViewState extends State<InventoryView> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Precio Costo y Venta
                       Row(
                         children: [
                           Expanded(
@@ -257,7 +289,6 @@ class _InventoryViewState extends State<InventoryView> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Componente para Foto de Prenda (Carga desde Dispositivo o URL)
                       const Text(
                         'Foto de la Prenda',
                         style: TextStyle(
@@ -286,76 +317,23 @@ class _InventoryViewState extends State<InventoryView> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              children: [
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size(
-                                      double.infinity,
-                                      38,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    final ImagePicker picker = ImagePicker();
-                                    // Redimensionamos la foto a un máximo de 250px de ancho/alto y 50% de calidad
-                                    final XFile? image = await picker.pickImage(
-                                      source: ImageSource.gallery,
-                                      maxWidth: 250,
-                                      maxHeight: 250,
-                                      imageQuality: 50,
-                                    );
-
-                                    if (image != null) {
-                                      final bytes = await image.readAsBytes();
-                                      final base64Img =
-                                          'data:image/jpeg;base64,${base64Encode(bytes)}';
-
-                                      // Verificación de seguridad en consola
-                                      debugPrint(
-                                        'Longitud Base64 comprimido: ${base64Img.length} caracteres',
-                                      );
-
-                                      setModalState(() {
-                                        imageCtrl.text = base64Img;
-                                        previewUrl = base64Img;
-                                      });
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.upload_file,
-                                    size: 18,
-                                    color: Color(0xFFC026D3),
-                                  ),
-                                  label: const Text(
-                                    'Subir desde dispositivo',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                            child: TextField(
+                              controller: imageCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'URL de la imagen',
+                                hintText: 'https://...',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
                                 ),
-                                const SizedBox(height: 6),
-                                TextField(
-                                  controller: imageCtrl,
-                                  decoration: const InputDecoration(
-                                    hintText: 'O pega enlace https://...',
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  onChanged: (val) {
-                                    setModalState(() {
-                                      previewUrl = val;
-                                    });
-                                  },
-                                ),
-                              ],
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (val) {
+                                setModalState(() {
+                                  previewUrl = val;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -368,10 +346,17 @@ class _InventoryViewState extends State<InventoryView> {
                           Expanded(
                             child: TextField(
                               controller: stockCtrl,
+                              readOnly: isEditing,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Stock Inicial *',
-                                border: OutlineInputBorder(),
+                              decoration: InputDecoration(
+                                labelText: isEditing
+                                    ? 'Stock Actual'
+                                    : 'Stock Inicial *',
+                                border: const OutlineInputBorder(),
+                                filled: isEditing,
+                                fillColor: isEditing
+                                    ? const Color(0xFFF1F5F9)
+                                    : null,
                               ),
                             ),
                           ),
@@ -410,7 +395,11 @@ class _InventoryViewState extends State<InventoryView> {
 
                     final double cost = double.tryParse(costCtrl.text) ?? 0;
                     final double price = double.tryParse(priceCtrl.text) ?? 0;
-                    final int stock = int.tryParse(stockCtrl.text) ?? 1;
+
+                    final int stock = isEditing
+                        ? productToEdit.stock
+                        : (int.tryParse(stockCtrl.text) ?? 1);
+
                     final int minStock = int.tryParse(minStockCtrl.text) ?? 2;
 
                     final product = Product(
@@ -429,7 +418,12 @@ class _InventoryViewState extends State<InventoryView> {
                       isActive: true,
                     );
 
-                    await widget.sheetsService.addProduct(product);
+                    if (isEditing) {
+                      await widget.sheetsService.updateProduct(product);
+                    } else {
+                      await widget.sheetsService.addProduct(product);
+                    }
+
                     if (mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -462,22 +456,10 @@ class _InventoryViewState extends State<InventoryView> {
       );
     }
 
-    final categoriesList = [
-      'Todas',
-      ...{..._products.map((p) => p.category)},
-    ];
-    final sizesList = [
-      'Todas',
-      'XS',
-      'S',
-      'M',
-      'L',
-      'XL',
-      '36',
-      '38',
-      '40',
-      'Única',
-    ];
+    final categoriesList = ['Todas', ..._categories.map((c) => c.categoria)];
+
+    // Mapeo directo de los modelos SizeModel cargados dinámicamente
+    final filterSizesList = ['Todas', ..._sizes.map((s) => s.name)];
 
     final filteredProducts = _products.where((p) {
       final matchesSearch =
@@ -531,7 +513,7 @@ class _InventoryViewState extends State<InventoryView> {
                 onPressed: () => _openProductModal(),
                 icon: const Icon(Icons.add, size: 20),
                 label: const Text(
-                  'Nueva Prenda / Producto',
+                  'Nueva Prenda',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -583,7 +565,7 @@ class _InventoryViewState extends State<InventoryView> {
                     ),
                     items: categoriesList
                         .map(
-                          (c) => DropdownMenuItem(
+                          (c) => DropdownMenuItem<String>(
                             value: c,
                             child: Text(
                               c,
@@ -597,10 +579,12 @@ class _InventoryViewState extends State<InventoryView> {
                   ),
                 ),
                 const SizedBox(width: 12),
+
+                // FILTRO DINÁMICO DE TALLES
                 SizedBox(
                   width: 140,
                   child: DropdownButtonFormField<String>(
-                    value: sizesList.contains(_selectedSize)
+                    value: filterSizesList.contains(_selectedSize)
                         ? _selectedSize
                         : 'Todas',
                     decoration: InputDecoration(
@@ -613,12 +597,12 @@ class _InventoryViewState extends State<InventoryView> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    items: sizesList
+                    items: filterSizesList
                         .map(
-                          (s) => DropdownMenuItem(
+                          (s) => DropdownMenuItem<String>(
                             value: s,
                             child: Text(
-                              'Talla: $s',
+                              s == 'Todas' ? 'Todas' : '$s',
                               style: const TextStyle(fontSize: 12),
                             ),
                           ),
@@ -634,6 +618,8 @@ class _InventoryViewState extends State<InventoryView> {
 
           Expanded(
             child: Container(
+              width: double
+                  .infinity, // <--- 1. IMPORTANTE: Forzar al Container a ocupar todo el ancho
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -646,250 +632,269 @@ class _InventoryViewState extends State<InventoryView> {
                         style: TextStyle(color: Colors.grey),
                       ),
                     )
-                  : SingleChildScrollView(
-                      child: DataTable(
-                        columnSpacing: 24,
-                        headingRowColor: WidgetStateProperty.all(
-                          const Color(0xFFF8FAFC),
-                        ),
-                        columns: const [
-                          DataColumn(
-                            label: Text(
-                              'Producto / Prenda',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints
+                                  .maxWidth, // <--- 2. Estira la tabla al ancho máximo disponible
                             ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Categoría',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                            child: DataTable(
+                              columnSpacing: 24,
+                              headingRowColor: WidgetStateProperty.all(
+                                const Color(0xFFF8FAFC),
                               ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Talla / Color',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Costo',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            numeric: true,
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Venta',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            numeric: true,
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Ganancia u.',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            numeric: true,
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Stock',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              'Acciones',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                        rows: filteredProducts.map((p) {
-                          final unitProfit = p.unitProfit;
-                          final isLowStock = p.isLowStock;
-
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFDF4FF),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: _buildProductImage(
-                                          p.image,
-                                          size: 36,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        Text(
-                                          'ID: #${p.id}',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  p.category,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF475569),
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        p.size,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      p.color.isEmpty ? '-' : p.color,
-                                      style: const TextStyle(
+                              columns: const [
+                                DataColumn(
+                                  label: Expanded(
+                                    // <--- Le da flexibilidad a la columna de Producto
+                                    child: Text(
+                                      'Prenda',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
                                         fontSize: 12,
-                                        color: Colors.grey,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  '₲ ${p.cost.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF475569),
                                   ),
                                 ),
-                              ),
-                              DataCell(
-                                Text(
-                                  '₲ ${p.price.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  '+₲ ${unitProfit.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF10B981),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isLowStock
-                                        ? const Color(0xFFFFE4E6)
-                                        : const Color(0xFFD1FAE5),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    '${p.stock} un.',
+                                DataColumn(
+                                  label: Text(
+                                    'Categoría',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 11,
-                                      color: isLowStock
-                                          ? const Color(0xFFE11D48)
-                                          : const Color(0xFF047857),
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ),
-                              ),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        size: 18,
-                                        color: Color(0xFF64748B),
+                                DataColumn(
+                                  label: Text(
+                                    'Talla Y Color',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Costo',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  numeric: true,
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Precio Lista',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  numeric: true,
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Ganancia Est.',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  numeric: true,
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Stock Actual',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Acciones',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              rows: filteredProducts.map((p) {
+                                final unitProfit = p.unitProfit;
+                                final isLowStock = p.isLowStock;
+
+                                return DataRow(
+                                  cells: [
+                                    DataCell(
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFDF4FF),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: _buildProductImage(
+                                                p.image,
+                                                size: 36,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                p.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              Text(
+                                                'ID: #${p.id}',
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                      onPressed: () => _openProductModal(p),
-                                      tooltip: 'Editar',
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        p.category,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              p.size,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            p.color.isEmpty ? '-' : p.color,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        '₲ ${p.cost.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        '₲ ${p.price.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(
+                                        '+₲ ${unitProfit.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF10B981),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isLowStock
+                                              ? const Color(0xFFFFE4E6)
+                                              : const Color(0xFFD1FAE5),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${p.stock} un.',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: isLowStock
+                                                ? const Color(0xFFE11D48)
+                                                : const Color(0xFF047857),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit_outlined,
+                                              size: 18,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                            onPressed: () =>
+                                                _openProductModal(p),
+                                            tooltip: 'Editar',
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList(),
-                      ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        );
+                      },
                     ),
             ),
           ),

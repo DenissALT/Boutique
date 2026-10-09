@@ -149,7 +149,7 @@ class _CustomersViewState extends State<CustomersView> {
                       final jsonlist = updatedList
                           .map((c) => c.toSheetRow())
                           .toList();
-                      print('>>> LISTA ACTUALIZADA DE SHEETS:');
+
                       setState(() {
                         _customers.clear(); // Vacía la lista actual
                         _customers.addAll(
@@ -443,7 +443,7 @@ void showCustomerDialog(
 
                 // Notas
                 const Text(
-                  'Notas / Referencias',
+                  'C.I / RUC',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -453,11 +453,15 @@ void showCustomerDialog(
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: notesController,
-                  maxLines: 3,
                   style: const TextStyle(fontSize: 13),
+                  validator: (val) =>
+                      (val == null || val.trim().isEmpty) ? 'Requerido' : null,
                   decoration: InputDecoration(
-                    hintText: 'Prefiere colores claros, talla M...',
-                    contentPadding: const EdgeInsets.all(12),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -466,7 +470,6 @@ void showCustomerDialog(
                 const SizedBox(height: 20),
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 const SizedBox(height: 20),
-
                 // Botones
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -518,7 +521,7 @@ void showCustomerDialog(
                             isActive: isEditing ? customer.isActive : true,
                           );
                           onSave(updatedCustomer); // Envía los datos
-                          //print('customer: $updatedCustomer');
+
                           Navigator.of(dialogContext).pop(); // Cierra el modal
                         }
                       },

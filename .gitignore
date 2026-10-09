@@ -47,3 +47,4 @@ app.*.map.json
 *.json
 assets/gsheets_credentials.json
 .env
+assets/credentials.json
